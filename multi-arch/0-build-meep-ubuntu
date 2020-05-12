@@ -1,0 +1,2 @@
+BLAS="$1"
+./build-meep.sh -Du1804 -d /opt -B${BLAS}

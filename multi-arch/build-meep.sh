@@ -11,7 +11,7 @@ $1: Download MEEP sources and dependencies, build, and install
 
 Usage: $1 [options]
 EOF
-    sed -ne 's,[ \t]*\(-[^ \t]*\))[^#]*#[ \t]*\(.*\),    \1 \2,p' "$1"
+    sed -ne 's,^[ \t]*\(-[^ \t]*\))[^#]*#[ \t]*\(.*\),    \1 \2,p' "$1"
     echo ""
     echo "After installation, environment file 'meep-env.sh' is created in destination path."
     echo ""
@@ -60,6 +60,7 @@ showenv()
 buildinstall=true
 installdeps=true
 bashrc=false
+BLAS=""
 unset DESTDIR
 
 while [ ! -z "$1" ]; do
@@ -90,6 +91,12 @@ while [ ! -z "$1" ]; do
             docker=ubuntu:18.04;;
         -Dcentos7)  # build 'meep-centos:7' docker image
             docker=centos:7;;
+        -Batlas)    # blas: use atlas
+            BLAS=atlas;;
+        -Bopenblas) # blas: use openblas
+            BLAS=openblas;;
+       # -Bgslcblas)      # blas: use gsl
+       #     BLAS=gslcblas;;
         --bashrc)
             bashrc=true;; # undocumented internal to store env in ~/.bashrc
         *)
@@ -101,6 +108,7 @@ while [ ! -z "$1" ]; do
 done
 
 $buildinstall && [ -z "${DESTDIR}" ] && { echo "-d option is missing" ; help "$0"; }
+$buildinstall && [ -z "${BLAS}" ] && { echo "blas taste is missing" ; help "$0"; }
 
 if [ ! -z "${docker}" ]; then
     ddir="docker-${docker}"
@@ -112,18 +120,18 @@ if [ ! -z "${docker}" ]; then
             echo "FROM ${docker}" > Dockerfile
             echo "RUN apt-get update && apt-get -y install apt-utils sudo" >> Dockerfile
             echo "ADD \"$0\" \"$0\"" >> Dockerfile
-            echo "RUN mkdir -p ${DESTDIR}; ./\"$0\" -d ${DESTDIR} --bashrc" >> Dockerfile
+            echo "RUN mkdir -p ${DESTDIR}; ./\"$0\" -d ${DESTDIR} --bashrc -B${BLAS}" >> Dockerfile
             echo "CMD /bin/bash" >> Dockerfile
-            exec docker build -t "meep-${docker}" .
+            exec docker build -t "meep-${docker}-${BLAS}" .
             ;;
 
         *centos*)
             echo "FROM ${docker}" > Dockerfile
             echo "RUN yum -y install sudo" >> Dockerfile
             echo "ADD \"$0\" \"$0\"" >> Dockerfile
-            echo "RUN mkdir -p ${DESTDIR}; ./\"$0\" -d ${DESTDIR} --bashrc" >> Dockerfile
+            echo "RUN mkdir -p ${DESTDIR}; ./\"$0\" -d ${DESTDIR} --bashrc -B${BLAS}" >> Dockerfile
             echo "CMD /bin/bash" >> Dockerfile
-            exec docker build -t "meep-${docker}" .
+            exec docker build -t "meep-${docker}-${BLAS}" .
             exit 1;;
 
         *)
@@ -198,11 +206,17 @@ if $installdeps && $ubuntu; then
 
     sudo apt-get update
 
+    case ${BLAS} in
+        atlas) bpkg=libatlas-base-dev;;
+        #openblas) bpkg=libopenblas-dev;;
+        openblas) bpkg="libgsl-dev libgslcblas0 libopenblas-dev";;
+        #gslcblas) bpkg="libgsl-dev libgslcblas0 libopenblas-dev";;
+    esac
+
     sudo apt-get -y install     \
         git                     \
         build-essential         \
         gfortran                \
-        libopenblas-dev         \
         libgmp-dev              \
         swig                    \
         autoconf                \
@@ -217,7 +231,9 @@ if $installdeps && $ubuntu; then
         python3-numpy           \
         python3-scipy           \
         python3-pip             \
-        ffmpeg
+        ffmpeg                  \
+        ${bpkg}                 \
+
 fi
 
 if $installdeps && $centos; then
@@ -285,13 +301,13 @@ if $buildinstall; then
     cd ${SRCDIR}
     gitclone https://github.com/NanoComp/harminv.git
     cd harminv/
-    autogensh --with-blas=openblas
+    autogensh --with-blas=${BLAS}
     make -j && $SUDO make install
 
     cd ${SRCDIR}
     gitclone https://github.com/NanoComp/libctl.git
     cd libctl/
-    autogensh
+    autogensh --with-blas=${BLAS}
     make -j && $SUDO make install
 
     cd ${SRCDIR}
@@ -303,7 +319,7 @@ if $buildinstall; then
     cd ${SRCDIR}
     gitclone https://github.com/NanoComp/mpb.git
     cd mpb/
-    autogensh CC=${CC} --with-hermitian-eps --with-blas=openblas
+    autogensh CC=${CC} --with-hermitian-eps --with-blas=${BLAS}
     make -j && $SUDO make install
 
     cd ${SRCDIR}
@@ -312,10 +328,11 @@ if $buildinstall; then
     autogensh
     make -j && $SUDO make install
 
-if false; then
+if true; then
     sudo -E -H python3 -m pip install --upgrade pip
     sudo -E -H python3 -m pip install --no-cache-dir mpi4py
     export HDF5_MPI="ON" # for python h5py
+    sudo -E -H python3 -m pip install cython
     sudo -E -H python3 -m pip install --no-cache-dir --no-binary=h5py h5py
     sudo -E -H python3 -m pip install --no-cache-dir matplotlib>3.0.0
 elif true; then
@@ -332,7 +349,7 @@ fi
     cd ${SRCDIR}
     gitclone https://github.com/NanoComp/meep.git
     cd meep/
-    autogensh --with-mpi --with-openmp --with-blas=openblas
+    autogensh --with-mpi --with-openmp --with-blas=${BLAS}
     make -j && $SUDO make install
 
     # all done

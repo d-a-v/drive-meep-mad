@@ -1,0 +1,3 @@
+#!/bin/bash -x
+BLAS="$1"
+docker run -ti -v $(pwd)/..:$(pwd)/.. meep-ubuntu:18.04-${BLAS} bash -xc "export PS1='#'; source ~/.bashrc; ldd \$(which meep) | grep -i blas; sleep 5; python3 $(pwd)/../MPB_test.py"

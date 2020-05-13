@@ -60,7 +60,7 @@ showenv()
 buildinstall=true
 installdeps=true
 bashrc=false
-BLAS="atlas"
+BLAS=""
 unset DESTDIR
 
 while [ ! -z "$1" ]; do
@@ -386,4 +386,5 @@ echo export LD_PRELOAD=${LD_PRELOAD}
 echo "------------ $test"
 cat $test
 echo "------------ EXEC python3 $test"
+. ${DESTDIR}/meep-env.sh
 python3 $test

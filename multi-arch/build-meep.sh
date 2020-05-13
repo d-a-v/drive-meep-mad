@@ -39,7 +39,7 @@ autogensh ()
     set -x
     sh autogen.sh PKG_CONFIG_PATH="${PKG_CONFIG_PATH}" RPATH_FLAGS="${RPATH_FLAGS}" \
         PYTHON=python3 CC="${CC}" LDFLAGS="${LDFLAGS}" CFLAGS="${CFLAGS}" CPPFLAGS="${CPPFLAGS}" LD_LIBRARY_PATH=${LLP} \
-        --disable-static --enable-shared --prefix="${DESTDIR}" --libdir=${LIB64} \
+        --enable-shared --prefix="${DESTDIR}" --libdir=${LIB64} \
         --with-libctl=${DESTDIR}/share/libctl \
         "$@"
     set -x
@@ -183,11 +183,12 @@ esac
 # these are passed to configure on demand with: 'autogensh ... CC=${CC} CXX=${CXX}'
 export CC=mpicc
 export CXX=mpicxx
+export CFLAGS="-O3 -mtune=native"
 
 if $ubuntu; then
     RPATH_FLAGS="-Wl,-rpath,${DESTDIR}/lib:/usr/lib/x86_64-linux-gnu/hdf5/openmpi"
     LDFLAGS="-L${DESTDIR}/lib -L/usr/lib/x86_64-linux-gnu/hdf5/openmpi ${RPATH_FLAGS}"
-    CFLAGS="-I${DESTDIR}/include -I/usr/include/hdf5/openmpi"
+    CFLAGS="${CFLAGS} -I${DESTDIR}/include -I/usr/include/hdf5/openmpi"
 fi
 
 if $centos; then
@@ -197,7 +198,7 @@ if $centos; then
 
     RPATH_FLAGS="-Wl,-rpath,${DESTDIR}/lib64:/usr/lib64/openmpi/lib"
     LDFLAGS="-L${DESTDIR}/lib64 -L/usr/lib64/openmpi/lib ${RPATH_FLAGS}"
-    CFLAGS="-I${DESTDIR}/include -I/usr/include/openmpi-x86_64/"
+    CFLAGS="${CFLAGS} -I${DESTDIR}/include -I/usr/include/openmpi-x86_64/"
 fi
 
 eval $(showenv)

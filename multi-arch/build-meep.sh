@@ -60,7 +60,7 @@ showenv()
 buildinstall=true
 installdeps=true
 bashrc=false
-BLAS=""
+BLAS="atlas"
 unset DESTDIR
 
 while [ ! -z "$1" ]; do
@@ -95,8 +95,8 @@ while [ ! -z "$1" ]; do
             BLAS=atlas;;
         -Bopenblas) # blas: use openblas
             BLAS=openblas;;
-       # -Bgslcblas)      # blas: use gsl
-       #     BLAS=gslcblas;;
+        -Bgslcblas)      # blas: use gsl+openblas (test)
+            BLAS=gslcblas;;
         --bashrc)
             bashrc=true;; # undocumented internal to store env in ~/.bashrc
         *)
@@ -208,10 +208,9 @@ if $installdeps && $ubuntu; then
     sudo apt-get update
 
     case ${BLAS} in
-        atlas) bpkg=libatlas-base-dev;;
-        #openblas) bpkg=libopenblas-dev;;
-        openblas) bpkg="libgsl-dev libgslcblas0 libopenblas-dev";;
-        #gslcblas) bpkg="libgsl-dev libgslcblas0 libopenblas-dev";;
+        atlas*) BLAS=atlas; bpkg=libatlas-base-dev;;
+        openblas) bpkg=libopenblas-dev;;
+        gslcblas) BLAS=openblas; bpkg="libgsl-dev libgslcblas0 libopenblas-dev";;
     esac
 
     sudo apt-get -y install     \
@@ -241,6 +240,11 @@ if $installdeps && $centos; then
 
     sudo yum -y --enablerepo=extras install epel-release
 
+    case ${BLAS} in
+        atlas) bpkg="atlas atlas-devel"; LDFLAGS="${LDFLAGS} -L/usr/lib64/${BLAS}"; BLAS=tatlas;;
+        gslcblas|openblas) bpkg=openblas-devel; BLAS=openblas;;
+    esac
+
     sudo yum -y install    \
         git                \
         bison              \
@@ -269,7 +273,6 @@ if $installdeps && $centos; then
         python3-devel      \
         python36-numpy     \
         python36-scipy     \
-        openblas-devel     \
         fftw3-devel        \
         libpng-devel       \
         gmp-devel          \
@@ -286,7 +289,8 @@ if $installdeps && $centos; then
         openmpi-devel      \
         hdf5-openmpi-devel \
         guile-devel        \
-        swig
+        swig               \
+        ${bpkg}
 
 fi
 
@@ -329,22 +333,18 @@ if $buildinstall; then
     autogensh
     make -j && $SUDO make install
 
-if true; then
+if $ubuntu; then
     sudo -E -H python3 -m pip install --upgrade pip
     sudo -E -H python3 -m pip install --no-cache-dir mpi4py
     export HDF5_MPI="ON" # for python h5py
     sudo -E -H python3 -m pip install cython
     sudo -E -H python3 -m pip install --no-cache-dir --no-binary=h5py h5py
     sudo -E -H python3 -m pip install --no-cache-dir matplotlib>3.0.0
-elif true; then
+else
     sudo -E -H python3 -m pip install --no-cache-dir mpi4py
     #sudo -E -H python3 -m pip install --no-binary=h5py h5py
     sudo -E -H python3 -m pip install h5py
     sudo -E -H python3 -m pip install matplotlib>3.0.0
-else
-    python3 -m pip install --user --no-cache-dir mpi4py
-    python3 -m pip install --user --no-binary=h5py h5py
-    python3 -m pip install --user matplotlib>3.0.0
 fi
 
     cd ${SRCDIR}

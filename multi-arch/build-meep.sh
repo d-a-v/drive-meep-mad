@@ -3,6 +3,12 @@
 # Latest version of this script can be found at:
 #   https://github.com/NanoComp/meep/blob/master/contrib/build-meep.sh
 
+# included LD_PRELOAD for CentOS is needed otherwise
+# this error message is displayed when starting python:
+#   python3 /tmp/test-meep.py
+#   ** failed to load python MPI module (mpi4py)
+#   ** /usr/local/lib64/python3.6/site-packages/mpi4py/MPI.cpython-36m-x86_64-linux-gnu.so: undefined symbol: ompi_mpi_logical8
+
 help ()
 {
     cat << EOF

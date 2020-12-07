@@ -1,0 +1,2 @@
+rm -f log
+( ./build-calmeep.sh -d ~/calmeep; ) 2>&1 | tee log.txt
